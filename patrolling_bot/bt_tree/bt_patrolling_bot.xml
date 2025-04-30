@@ -1,70 +1,56 @@
-
-
-<root main_tree_to_execute="MainTree">
-  <BehaviorTree ID="MainTree">
-    <Fallback name="RootFallback">
-      <!-- Emergency Low Battery -->
-      <Sequence name="EmergencyLowBattery">
-        <Condition ID="IsBatteryCritical" battery_threshold="10"/>
-        <Action ID="ReturnToCharging" emergency="true"/>
-      </Sequence>
-      
-      <!-- Safety Check -->
-      <Sequence name="SafetyCheck">
-        <Condition ID="IsArenaSafe"/>
-        <Invert>
-          <Condition ID="IsArenaSafe"/>
-        </Invert>
-        <Action ID="ReturnToCharging"/>
-      </Sequence>
-      
-      <!-- Normal Operations -->
-      <Fallback name="NormalOperations">
-        <!-- Risky Point Patrol -->
-        <Sequence name="RiskyPatrol">
-          <Condition ID="IsBatterySufficient" min_level="20"/>
-          <Action ID="IdentifyMostRiskyPoint"/>
-          <Action ID="SetGoal" target="most_risky"/>
-          <Action ID="PatrolWithReturn" buffer="20"/>
-        </Sequence>
-        
-        <!-- Standard Checkpoint Patrol -->
-        <Sequence name="StandardPatrol">
-          <Condition ID="IsBatterySufficient" min_level="30"/>
-          <Action ID="CheckBatteryLevel"/>
-          <Action ID="SelectNextCheckpoint"/>
-          <Action ID="PatrolCheckpoints" buffer="20"/>
-        </Sequence>
-        
-        <!-- Idle at Station -->
-        <Action ID="WaitAtChargingStation"/>
-      </Fallback>
-      
-      <!-- Fallback Safe Behavior -->
-      <Action ID="DefaultSafeBehavior"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<root BTCPP_format="3">
+  <BehaviorTree ID="PatrolToMostRiskyPointSubtree">
+    <Fallback>
+      <MoveToGole/>
+      <ReachToGole/>
+      <SetGoleToChargingStation/>
     </Fallback>
   </BehaviorTree>
-  
-  <!-- Nodes Definitions (partial example) -->
+
+  <BehaviorTree ID="ReturnToChargingSubtree">
+    <Fallback>
+      <ReachToGole/>
+      <MoveToGole/>
+    </Fallback>
+  </BehaviorTree>
+
+  <BehaviorTree ID="pat">
+    <Sequence>
+      <UpdateBlackBoard/>
+      <Fallback name="Fallback Check Enough Battery">
+        <IsBatteryCritical/>
+        <SetGoleToChargingStation/>
+        <SubTree ID="ReturnToChargingSubtree"
+                 __shared_blackboard="true"/>
+      </Fallback>
+      <IdentifyMostRiskyPoint/>
+      <Fallback>
+        <IsEnoughBattryToPatrollCheckPoint name="NotEnoughBattryToPatrollCheckPoint"/>
+        <SetGoleToChargingStation/>
+        <SubTree ID="ReturnToChargingSubtree"
+                 __shared_blackboard="true"/>
+      </Fallback>
+      <SubTree ID="PatrolToMostRiskyPointSubtree"
+               __shared_blackboard="true"/>
+      <SubTree ID="ReturnToChargingSubtree"/>
+    </Sequence>
+  </BehaviorTree>
+
+  <!-- Description of Node Models (used by Groot) -->
   <TreeNodesModel>
-    <Action ID="ReturnToCharging">
-      <param name="emergency" type="bool">false</param>
-    </Action>
-    
-    <Condition ID="IsBatteryCritical">
-      <param name="battery_threshold" type="int">10</param>
-    </Condition>
-    
-    <Condition ID="IsArenaSafe">
-      <param name="timeout" type="int">5000</param>
-    </Condition>
-    
-    <Action ID="IdentifyMostRiskyPoint">
-      <param name="risk_threshold" type="float">0.7</param>
-    </Action>
-    
-    <Action ID="PatrolWithReturn">
-      <param name="buffer" type="int">20</param>
-    </Action>
+    <Action ID="IdentifyMostRiskyPoint"/>
+    <Condition ID="IsBatteryCritical"/>
+    <Condition ID="IsEnoughBattryToPatrollCheckPoint"
+               editable="true"/>
+    <Action ID="MoveToGole"
+            editable="true"/>
+    <Condition ID="ReachToGole"
+               editable="true"/>
+    <Action ID="SetGoleToChargingStation"
+            editable="true"/>
+    <Action ID="UpdateBlackBoard"
+            editable="true"/>
   </TreeNodesModel>
+
 </root>

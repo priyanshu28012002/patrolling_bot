@@ -44,4 +44,5 @@ ros2 launch cpp_patrolling_bot patrol_bot.launch.py
 
 ## Behavior Tree XML
 
+![Behavior Tree](images/bt.png)
 

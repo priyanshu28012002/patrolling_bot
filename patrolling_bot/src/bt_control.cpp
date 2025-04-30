@@ -220,8 +220,8 @@ public:
     {
 
         // Initialize waypoints (example data)
-        checkPoint1 = {1.74, -1.35, 0.0, 0.0, 0.0, 0.7, 0.7}; // Example waypoint data
-        checkPoint2 = {0.0, 2.0, 0.0, 0.0, -5.0, 0.99, 0.0}; // Example waypoint data
+        checkPoint1 = {1.74, -1.35, 0.0, 0.0, 0.0, 0.7, 0.7};  // Example waypoint data
+        checkPoint2 = {0.0, 2.0, 0.0, 0.0, -5.0, 0.99, 0.0};   // Example waypoint data
         checkPoint3 = {-2.0, 0.0, 0.0, 0.0, 0.0, 0.68, -0.70}; // Example waypoint data
     }
 
@@ -289,12 +289,14 @@ public:
 
     BT::NodeStatus tick() override
     {
-        if (!getInput("risk", risk_)) {
+        if (!getInput("risk", risk_))
+        {
             std::cerr << "OrderRiskProbability: Failed to get 'risk' from blackboard\n";
             return BT::NodeStatus::FAILURE;
         }
 
-        if (risk_.empty()) {
+        if (risk_.empty())
+        {
             std::cerr << "OrderRiskProbability: 'risk' vector is empty\n";
             return BT::NodeStatus::FAILURE;
         }
@@ -303,8 +305,10 @@ public:
         float max_risk = risk_[0];
         checkpoint_index_ = 0;
 
-        for (size_t i = 1; i < risk_.size(); ++i) {
-            if (risk_[i] > max_risk) {
+        for (size_t i = 1; i < risk_.size(); ++i)
+        {
+            if (risk_[i] > max_risk)
+            {
                 max_risk = risk_[i];
                 checkpoint_index_ = static_cast<int>(i);
             }
@@ -320,8 +324,7 @@ public:
     {
         return {
             BT::OutputPort<int>("checkpoint_index"),
-            BT::InputPort<std::vector<float>>("risk")
-        };
+            BT::InputPort<std::vector<float>>("risk")};
     }
 
 private:
@@ -329,25 +332,61 @@ private:
     std::vector<float> risk_;
 };
 
-
 const std::string xml_tree = R"(
-  <root main_tree_to_execute="MainTree">
-      <BehaviorTree ID="MainTree">
-          <Sequence name="main_sequence">
-              <UpdateBlackBoard battery_status="{battery_status}" risk="{risk}" position="{position}" orientation="{orientation}" gole_pose="{gole_pose}"/>
-              <Fallback>
-              <Sequence name="EmergencyLowBattery">
-              <IsBatteryCritical battery_status="{battery_status}"/>
-              <ReturnToCharging gole_pose="{gole_pose}"/>
-             </Sequence>
-             
-             <Fallback/>
+    <root BTCPP_format="3">
+    <BehaviorTree ID="PatrolToMostRiskyPointSubtree">
+        <Fallback>
+        <MoveToGole/>
+        <ReachToGole/>
+        <SetGoleToChargingStation/>
+        </Fallback>
+    </BehaviorTree>
 
-              <OrderRiskProbability risk="{risk}" checkpoint_index="{checkpoint_index}"/>
-              <PatrollTOGole gole_pose="{gole_pose}" checkpoint_index="{checkpoint_index}"/>
-          </Sequence>
-      </BehaviorTree>
-  </root>
+    <BehaviorTree ID="ReturnToChargingSubtree">
+        <Fallback>
+        <ReachToGole/>
+        <MoveToGole/>
+        </Fallback>
+    </BehaviorTree>
+
+    <BehaviorTree ID="pat">
+        <Sequence>
+        <UpdateBlackBoard/>
+        <Fallback name="Fallback Check Enough Battery">
+            <IsBatteryCritical/>
+            <SetGoleToChargingStation/>
+            <SubTree ID="ReturnToChargingSubtree"
+                    __shared_blackboard="true"/>
+        </Fallback>
+        <IdentifyMostRiskyPoint/>
+        <Fallback>
+            <IsEnoughBattryToPatrollCheckPoint name="NotEnoughBattryToPatrollCheckPoint"/>
+            <SetGoleToChargingStation/>
+            <SubTree ID="ReturnToChargingSubtree"
+                    __shared_blackboard="true"/>
+        </Fallback>
+        <SubTree ID="PatrolToMostRiskyPointSubtree"
+                __shared_blackboard="true"/>
+        <SubTree ID="ReturnToChargingSubtree"/>
+        </Sequence>
+    </BehaviorTree>
+
+    <!-- Description of Node Models (used by Groot) -->
+    <TreeNodesModel>
+        <Action ID="IdentifyMostRiskyPoint"/>
+        <Condition ID="IsBatteryCritical"/>
+        <Condition ID="IsEnoughBattryToPatrollCheckPoint"
+                editable="true"/>
+        <Action ID="MoveToGole"
+                editable="true"/>
+        <Condition ID="ReachToGole"
+                editable="true"/>
+        <Action ID="SetGoleToChargingStation"
+                editable="true"/>
+        <Action ID="UpdateBlackBoard"
+                editable="true"/>
+    </TreeNodesModel>
+    </root>
   )";
 
 // ========== Main ==========
@@ -368,7 +407,6 @@ int main(int argc, char **argv)
     factory.registerNodeType<ReturnToCharging>("ReturnToCharging");
     factory.registerNodeType<PatrollTOGole>("PatrollTOGole");
     factory.registerNodeType<OrderRiskProbability>("OrderRiskProbability");
-
 
     auto tree = factory.createTreeFromText(xml_tree);
     BT::StdCoutLogger logger(tree);

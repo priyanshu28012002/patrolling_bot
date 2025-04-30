@@ -16,7 +16,7 @@ public:
         );
 
         battery_status_pub_timer_ = this->create_wall_timer(
-            std::chrono::milliseconds(500),
+            std::chrono::microseconds(1),
             std::bind(&BatteryStatus::publish_battery_status, this)
         );
 
@@ -49,7 +49,7 @@ private:
             }
         }
 
-        RCLCPP_INFO(this->get_logger(), "Battery status after modification: %.2f", battery_status_val);
+        // RCLCPP_INFO(this->get_logger(), "Battery status after modification: %.2f", battery_status_val);
     }
 
     void publish_battery_status() {
